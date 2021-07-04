@@ -3,16 +3,13 @@ package me.finnbueno.firejetplus.util;
 import com.projectkorra.projectkorra.BendingPlayer;
 import com.projectkorra.projectkorra.Element;
 import com.projectkorra.projectkorra.GeneralMethods;
-import com.projectkorra.projectkorra.ProjectKorra;
-import com.projectkorra.projectkorra.ability.AddonAbility;
 import com.projectkorra.projectkorra.ability.ComboAbility;
 import com.projectkorra.projectkorra.ability.CoreAbility;
+import com.projectkorra.projectkorra.ability.PassiveAbility;
 import com.projectkorra.projectkorra.ability.util.ComboManager;
-import com.projectkorra.projectkorra.configuration.Config;
 import com.projectkorra.projectkorra.configuration.ConfigManager;
 import com.projectkorra.projectkorra.util.ClickType;
 import me.finnbueno.firejetplus.ability.FireJet;
-import me.finnbueno.firejetplus.combo.FireRush;
 import org.bukkit.Particle;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.util.Vector;
@@ -51,7 +48,9 @@ public class FireUtil {
 
 	public static void registerLanguage(CoreAbility ability, String description, String instructions) {
 		FileConfiguration langConfig = ConfigManager.languageConfig.get();
-		if (ability instanceof ComboAbility) {
+		if (ability instanceof PassiveAbility) {
+			langConfig.addDefault(String.format("ExtraAbilities.%s.Fire.Passive.%s.Description", FireJet.AUTHOR, ability.getName()), description);
+		} else if (ability instanceof ComboAbility) {
 			langConfig.addDefault(String.format("ExtraAbilities.%s.Fire.Combo.%s.Description", FireJet.AUTHOR, ability.getName()), description);
 			langConfig.addDefault(String.format("ExtraAbilities.%s.Fire.Combo.%s.Instructions", FireJet.AUTHOR, ability.getName()), instructions);
 		} else {

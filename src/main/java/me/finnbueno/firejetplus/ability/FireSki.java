@@ -8,14 +8,12 @@ import me.finnbueno.firejetplus.config.ConfigValue;
 import me.finnbueno.firejetplus.config.ConfigValueHandler;
 import me.finnbueno.firejetplus.util.FireUtil;
 import me.finnbueno.firejetplus.util.OverriddenFireAbility;
-import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Particle;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockFace;
 import org.bukkit.entity.Player;
 import org.bukkit.permissions.Permission;
-import org.bukkit.permissions.PermissionDefault;
 import org.bukkit.util.Vector;
 
 import java.util.Arrays;
@@ -42,25 +40,34 @@ public class FireSki extends OverriddenFireAbility implements AddonAbility {
 	@ConfigValue()
 	private double speed = .7;
 	@ConfigValue()
-	private double maxSteeringAngle = 7;
+	private double maxSteeringAngle = 8;
 	@ConfigValue()
 	private boolean lockDirectionOnSlotSwap = true;
+	@ConfigValue()
+	private boolean cancelJetOnDamage = true;
+	@ConfigValue()
+	private boolean enabled = true;
 
 	private Block floor;
 	private Vector direction;
 
+	/**
+	 * This constructor is used to generate config values, do not use
+	 */
+	private FireSki() {
+		super(null);
+	}
+
 	public FireSki(Player player) {
 		super(player);
-		ConfigValueHandler.get().setFields(this);
 		if (!bPlayer.canBendIgnoreBinds(this) || !bPlayer.canBendIgnoreCooldowns(CoreAbility.getAbility("FireJet"))) {
 			return;
 		}
 
 		this.floor = findFloor();
-		this.direction = player.getLocation().getDirection().multiply(this.speed);
+		this.direction = player.getLocation().getDirection().multiply(getDayFactor(this.speed));
 		this.flightHandler.createInstance(player, this.getName());
 
-		bPlayer.addCooldown(this);
 		start();
 	}
 
@@ -80,7 +87,7 @@ public class FireSki extends OverriddenFireAbility implements AddonAbility {
 			remove();
 			return;
 		}
-		if (duration != 0 && getStartTime() + duration < System.currentTimeMillis()) {
+		if (duration != 0 && getStartTime() + getDayFactor(duration) < System.currentTimeMillis()) {
 			remove();
 			return;
 		}
@@ -135,7 +142,7 @@ public class FireSki extends OverriddenFireAbility implements AddonAbility {
 				Location hand = getHand.apply(player);
 				Location loc = hand.add((Math.random() - .5) * offset, (Math.random() - .5) * offset, (Math.random() - .5) * offset);
 				double yaw = Math.toRadians(player.getLocation().getYaw());
-				Vector particleDirection = new Vector(-Math.sin(yaw), .5, Math.cos(yaw)).multiply(-1);
+				Vector particleDirection = new Vector(-Math.sin(yaw), .5, Math.cos(yaw)).multiply(-.6);
 				particleDirection = FireUtil.randomizeVector(particleDirection, 50);
 				this.player.getWorld()
 					.spawnParticle(particle, loc, 0, particleDirection.getX(), particleDirection.getY(), particleDirection.getZ());
@@ -149,17 +156,24 @@ public class FireSki extends OverriddenFireAbility implements AddonAbility {
 		Vector initial = this.direction.normalize().clone();
 		if (Math.toDegrees(player.angle(initial)) > maxSteeringAngle) {
 			Vector cross = player.getCrossProduct(initial);
-			this.direction = GeneralMethods.rotateVectorAroundVector(cross, initial, -maxSteeringAngle).normalize();
+			this.direction = GeneralMethods.rotateVectorAroundVector(cross, initial, -maxSteeringAngle);
 		} else {
 			this.direction = player;
 		}
-		this.direction.multiply(speed);
+		this.direction.normalize().multiply(getDayFactor(this.speed));
+	}
+
+	public void handleDamage() {
+		if (cancelJetOnDamage) {
+			remove();
+		}
 	}
 
 	@Override
 	public void remove() {
 		super.remove();
 		this.flightHandler.removeInstance(player, getName());
+		bPlayer.addCooldown(this);
 	}
 
 	public void setSpeed(double speed) {
@@ -206,14 +220,13 @@ public class FireSki extends OverriddenFireAbility implements AddonAbility {
 
 	@Override
 	public void load() {
-		perm = new Permission("bending.ability." + getName());
-		perm.setDefault(PermissionDefault.TRUE);
-		ConfigValueHandler.get().registerDefaultValues(this, "FireJet");
+		super.load();
+		ConfigValueHandler.get().setFields(new FireSki(), "FireJet");
 	}
 
 	@Override
 	public void stop() {
-		Bukkit.getServer().getPluginManager().removePermission(perm);
+		ConfigValueHandler.get().unregister(this);
 	}
 
 	@Override
@@ -225,5 +238,4 @@ public class FireSki extends OverriddenFireAbility implements AddonAbility {
 	public String getVersion() {
 		return FireJet.VERSION;
 	}
-
 }

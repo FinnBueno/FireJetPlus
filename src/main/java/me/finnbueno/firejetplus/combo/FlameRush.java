@@ -6,18 +6,17 @@ import com.projectkorra.projectkorra.ability.AddonAbility;
 import com.projectkorra.projectkorra.ability.ComboAbility;
 import com.projectkorra.projectkorra.ability.util.ComboManager;
 import com.projectkorra.projectkorra.util.ClickType;
+import com.projectkorra.projectkorra.util.DamageHandler;
 import me.finnbueno.firejetplus.ability.FireJet;
 import me.finnbueno.firejetplus.config.ConfigValue;
 import me.finnbueno.firejetplus.config.ConfigValueHandler;
 import me.finnbueno.firejetplus.util.FireUtil;
 import me.finnbueno.firejetplus.util.OverriddenFireAbility;
-import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Particle;
 import org.bukkit.Sound;
+import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
-import org.bukkit.permissions.Permission;
-import org.bukkit.permissions.PermissionDefault;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -26,30 +25,43 @@ import java.util.concurrent.ThreadLocalRandom;
 /**
  * @author Finn Bon
  */
-public class FireRush extends OverriddenFireAbility implements ComboAbility, AddonAbility {
-
-	private Permission perm;
+public class FlameRush extends OverriddenFireAbility implements ComboAbility, AddonAbility {
 
 	@ConfigValue()
 	private long cooldown = 1500;
 	@ConfigValue()
+	private long duration = 1000;
+	@ConfigValue()
 	private double speed = 1.7;
 	@ConfigValue()
-	private double knockback = .5;
+	private double knockback = .7;
+	@ConfigValue()
+	private double maxSteeringAngle = 2.5;
+	@ConfigValue()
+	private double damage = 2;
+	@ConfigValue()
+	private boolean enabled = true;
 
-	private final FireJet jet;
+	private FireJet jet;
 
-	public FireRush(Player player, FireJet jet) {
+	/**
+	 * This constructor is used to generate config values, do not use
+	 */
+	private FlameRush() {
+		super(null);
+	}
+
+	public FlameRush(Player player, FireJet jet) {
 		super(player);
-		ConfigValueHandler.get().setFields(this);
 		this.jet = jet;
-		player.sendMessage("Test 7");
 		if (this.jet.getChargeFactor() < .6) {
 			return;
 		}
-		player.sendMessage("Test 8");
-		this.jet.setSpeed(speed);
-		this.jet.setMaxSteeringAngle(1.5);
+		if (this.duration != 0) {
+			this.jet.setDuration(this.duration);
+		}
+		this.jet.setSpeed(getDayFactor(this.speed));
+		this.jet.setMaxSteeringAngle(this.maxSteeringAngle);
 		this.player.getWorld().playSound(player.getEyeLocation(), Sound.ENTITY_GENERIC_EXPLODE, .7f, .7f);
 		start();
 	}
@@ -66,15 +78,34 @@ public class FireRush extends OverriddenFireAbility implements ComboAbility, Add
 			return;
 		}
 
-		this.player.getWorld().spawnParticle(Particle.SMOKE_NORMAL, player.getLocation(), 2, .4, .1, .4);
+		this.player.getWorld().spawnParticle(Particle.SMOKE_LARGE, player.getLocation(), 10, .2, .2, .2, 0.05);
 
 		if (ThreadLocalRandom.current().nextInt(4) == 0) {
 			this.player.getWorld().playSound(player.getEyeLocation(), Sound.BLOCK_FIRE_EXTINGUISH, 1f, .4f);
 		}
 
-		GeneralMethods.getEntitiesAroundPoint(player.getLocation(), 1).stream()
+
+		GeneralMethods.getEntitiesAroundPoint(getLocation(), 1).stream()
 			.filter(e -> e.getUniqueId() != player.getUniqueId())
-			.forEach(e -> e.setVelocity(GeneralMethods.getDirection(player.getLocation(), e.getLocation()).normalize().multiply(knockback)));
+			.filter(e -> e instanceof LivingEntity)
+			.map(e -> (LivingEntity) e)
+			.forEach(e -> {
+				e.setVelocity(
+					this.jet.getDirection().normalize().add(
+						GeneralMethods.getDirection(
+							player.getLocation(),
+							e.getLocation()
+						).normalize().multiply(.2)
+					).normalize().multiply(getDayFactor(this.knockback))
+				);
+				DamageHandler.damageEntity(e, getDayFactor(this.damage), this);
+			});
+	}
+
+	@Override
+	public void remove() {
+		super.remove();
+		bPlayer.addCooldown(this);
 	}
 
 	@Override
@@ -94,7 +125,7 @@ public class FireRush extends OverriddenFireAbility implements ComboAbility, Add
 
 	@Override
 	public String getName() {
-		return "FireRush";
+		return "FlameRush";
 	}
 
 	@Override
@@ -104,17 +135,16 @@ public class FireRush extends OverriddenFireAbility implements ComboAbility, Add
 
 	@Override
 	public void load() {
-		perm = new Permission("bending.ability." + getName());
-		perm.setDefault(PermissionDefault.TRUE);
+		super.load();
 		FireUtil.registerLanguage(this, "With this combo, a firebender can greatly accelerate their FireJet, at the cost of steering capacity. To " +
 			"use, the FireJet charge bar must be charged to red. When activated, your FireJet will become much faster and knock aside anyone you hit. However, steering " +
 			"becomes nearly impossible.", FireUtil.generateComboInstructions(this));
-		ConfigValueHandler.get().registerDefaultValues(this);
+		ConfigValueHandler.get().setFields(new FlameRush());
 	}
 
 	@Override
 	public void stop() {
-		Bukkit.getServer().getPluginManager().removePermission(perm);
+		ConfigValueHandler.get().unregister(this);
 	}
 
 	@Override
@@ -129,20 +159,16 @@ public class FireRush extends OverriddenFireAbility implements ComboAbility, Add
 
 	@Override
 	public Object createNewComboInstance(Player player) {
-		player.sendMessage("Test 1");
 		BendingPlayer bPlayer = BendingPlayer.getBendingPlayer(player);
 		if (bPlayer == null) {
 			return null;
 		}
-		player.sendMessage("Test 2");
 		if (!bPlayer.canBendIgnoreBinds(this)) {
 			return null;
 		}
-		player.sendMessage("Test 3");
 		FireJet jet = getAbility(player, FireJet.class);
 		if (jet != null) {
-			player.sendMessage("Test 4");
-			return jet.attemptFireRush();
+			jet.onFlyStart(() -> new FlameRush(player, jet));
 		}
 		return null;
 	}
@@ -151,9 +177,7 @@ public class FireRush extends OverriddenFireAbility implements ComboAbility, Add
 	public ArrayList<ComboManager.AbilityInformation> getCombination() {
 		return new ArrayList<>(Arrays.asList(
 			new ComboManager.AbilityInformation("Blaze", ClickType.SHIFT_DOWN),
-			new ComboManager.AbilityInformation("FireBurst", ClickType.LEFT_CLICK),
-			new ComboManager.AbilityInformation("FireBurst", ClickType.LEFT_CLICK),
-			new ComboManager.AbilityInformation("FireBurst", ClickType.SHIFT_UP),
+			new ComboManager.AbilityInformation("FireBlast", ClickType.SHIFT_UP),
 			new ComboManager.AbilityInformation("FireJet", ClickType.SHIFT_DOWN),
 			new ComboManager.AbilityInformation("FireJet", ClickType.SHIFT_UP)
 		));

@@ -11,18 +11,16 @@ import java.lang.reflect.Field;
 public class ConfigField {
 
 	private final Field field;
-	private final String path;
 	private final Object value;
 
 	public ConfigField(Field field, String path) {
 		this.field = field;
-		this.path = path;
 		this.value = ConfigManager.defaultConfig.get().get(path);
 	}
 
 	public void load(CoreAbility ability) {
 		try {
-			field.set(path, value);
+			field.set(ability, value);
 		} catch (IllegalAccessException e) {
 			e.printStackTrace();
 		}

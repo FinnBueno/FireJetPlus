@@ -27,24 +27,23 @@ public class ConfigValueHandler {
 	private Map<Class<? extends CoreAbility>, Set<ConfigField>> fieldsPerClass = new HashMap<>();
 
 	public void setFields(CoreAbility ability) {
+		setFields(ability, null);
+	}
+
+	public void setFields(CoreAbility ability, String prefix) {
 		Set<ConfigField> configFields = fieldsPerClass.get(ability.getClass());
-		configFields.forEach(cf -> cf.load(ability));
+		if (configFields == null) {
+			configFields = registerDefaultValues(ability, prefix);
+			fieldsPerClass.put(ability.getClass(), configFields);
+		}
+		if (configFields != null) {
+			configFields.forEach(cf -> cf.load(ability));
+		}
 	}
 
-	public void registerDefaultValues(CoreAbility ability) {
-		registerDefaultValues(ability, null);
-	}
-
-	public void registerDefaultValues(CoreAbility ability, String prefix) {
+	private Set<ConfigField> registerDefaultValues(CoreAbility ability, String prefix) {
 		try {
-			String path = BASE_PATH;
-			if (ability instanceof ComboAbility) {
-				path += "Combos.";
-			}
-			if (prefix != null) {
-				path += prefix + ".";
-			}
-			path += ability.getName();
+			String path = buildPath(ability, prefix);
 
 			Field[] fields = ability.getClass().getDeclaredFields();
 
@@ -67,9 +66,7 @@ public class ConfigValueHandler {
 					continue;
 				}
 
-				String finalPath = String.format("%s.%s", path, configValue.value().length() == 0 ? formatFieldName(field.getName()) : configValue.value());
-
-				System.out.printf("Field: %s - Value: %s - Path: %s%n", field.getName(), standardValue, finalPath);
+				String finalPath = String.format("%s.%s", path, formatFieldName(field.getName()));
 
 				ConfigManager.defaultConfig.get().addDefault(finalPath, standardValue);
 
@@ -79,9 +76,27 @@ public class ConfigValueHandler {
 			ConfigManager.defaultConfig.save();
 
 			fieldsPerClass.put(ability.getClass(), fieldSet);
+
+			return fieldSet;
 		} catch (IllegalAccessException e) {
 			e.printStackTrace();
 		}
+		return null;
+	}
+
+	private String buildPath(CoreAbility ability, String prefix) {
+		String path = BASE_PATH;
+		if (ability instanceof ComboAbility) {
+			path += "Combos.";
+		}
+		if (ability instanceof ComboAbility) {
+			path += "Passives.";
+		}
+		if (prefix != null) {
+			path += prefix + ".";
+		}
+		path += ability.getName();
+		return path;
 	}
 
 	private String formatFieldName(String name) {
@@ -90,4 +105,15 @@ public class ConfigValueHandler {
 			.collect(Collectors.joining());
 	}
 
+	public void unregister(CoreAbility ability) {
+		fieldsPerClass.remove(ability.getClass());
+	}
+
+	public <T> Optional<T> checkManually(OverriddenFireAbility overriddenFireAbility, String path) {
+		String finalPath = String.format("%s.%s", buildPath(overriddenFireAbility, null), path);
+		if (ConfigManager.defaultConfig.get().contains(finalPath)) {
+			return (Optional<T>) Optional.ofNullable(ConfigManager.defaultConfig.get().get(finalPath));
+		}
+		return Optional.empty();
+	}
 }

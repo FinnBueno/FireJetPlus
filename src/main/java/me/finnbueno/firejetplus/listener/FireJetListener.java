@@ -5,8 +5,9 @@ import com.projectkorra.projectkorra.ProjectKorra;
 import com.projectkorra.projectkorra.ability.CoreAbility;
 import me.finnbueno.firejetplus.ability.FireJet;
 import me.finnbueno.firejetplus.ability.FireSki;
-import me.finnbueno.firejetplus.ability.FireStride;
+import me.finnbueno.firejetplus.ability.FireDash;
 import me.finnbueno.firejetplus.combo.FireStomp;
+import me.finnbueno.firejetplus.passive.FireCushion;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
@@ -39,7 +40,7 @@ public class FireJetListener implements Listener {
 		if (bendingPlayer == null) {
 			return;
 		}
-		FireStride stride = CoreAbility.getAbility(event.getPlayer(), FireStride.class);
+		FireDash stride = CoreAbility.getAbility(event.getPlayer(), FireDash.class);
 		if (stride != null) {
 			if (stride.attemptFireSki()) {
 				return;
@@ -69,7 +70,7 @@ public class FireJetListener implements Listener {
 			bendingPlayer.canBendIgnoreCooldowns(fireJet) &&
 			CoreAbility.getAbility(event.getPlayer(), FireSki.class) == null
 		) {
-			new FireStride(event.getPlayer());
+			new FireDash(event.getPlayer());
 		}
 	}
 
@@ -88,6 +89,10 @@ public class FireJetListener implements Listener {
 		if (fjp != null) {
 			fjp.handleDamage();
 		}
+		FireSki fsk = CoreAbility.getAbility(player, FireSki.class);
+		if (fsk != null) {
+			fsk.handleDamage();
+		}
 	}
 
 	@EventHandler
@@ -101,12 +106,14 @@ public class FireJetListener implements Listener {
 		FireStomp stomp = CoreAbility.getAbility(player, FireStomp.class);
 		if (stomp != null) {
 			stomp.handleFallDamage(event);
+		} else {
+			new FireCushion(player, event);
 		}
 	}
 
 	private CoreAbility getFireHop() {
 		if (fireHop == null) {
-			fireHop = CoreAbility.getAbility(FireStride.class);
+			fireHop = CoreAbility.getAbility(FireDash.class);
 		}
 		return fireHop;
 	}

@@ -12,14 +12,11 @@ import me.finnbueno.firejetplus.config.ConfigValue;
 import me.finnbueno.firejetplus.config.ConfigValueHandler;
 import me.finnbueno.firejetplus.util.FireUtil;
 import me.finnbueno.firejetplus.util.OverriddenFireAbility;
-import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Particle;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
 import org.bukkit.event.entity.EntityDamageEvent;
-import org.bukkit.permissions.Permission;
-import org.bukkit.permissions.PermissionDefault;
 import org.bukkit.util.Vector;
 
 import java.util.ArrayList;
@@ -30,8 +27,6 @@ import java.util.concurrent.ThreadLocalRandom;
  * @author Finn Bon
  */
 public class FireStomp extends OverriddenFireAbility implements ComboAbility, AddonAbility {
-
-	private Permission perm;
 
 	@ConfigValue()
 	private long cooldown = 2500;
@@ -45,12 +40,20 @@ public class FireStomp extends OverriddenFireAbility implements ComboAbility, Ad
 	private double knockback = .5;
 	@ConfigValue()
 	private double fallDamageReduction = 12;
+	@ConfigValue()
+	private boolean enabled = true;
 
 	private double yVelocity, fallDistance;
 
+	/**
+	 * This constructor is used to generate config values, do not use
+	 */
+	private FireStomp() {
+		super(null);
+	}
+
 	public FireStomp(Player player) {
 		super(player);
-		ConfigValueHandler.get().setFields(this);
 		this.yVelocity = player.getVelocity().getY();
 		this.fallDistance = player.getFallDistance();
 		start();
@@ -59,10 +62,6 @@ public class FireStomp extends OverriddenFireAbility implements ComboAbility, Ad
 	@Override
 	public void progress() {
 		if (!bPlayer.canBendIgnoreBindsCooldowns(this)) {
-			remove();
-			return;
-		}
-		if (!player.isSneaking()) {
 			remove();
 			return;
 		}
@@ -91,7 +90,6 @@ public class FireStomp extends OverriddenFireAbility implements ComboAbility, Ad
 	}
 
 	private void impact() {
-
 		Location center = player.getLocation().add(0, .1, 0);
 		int amount = 300;
 		double offset = .5;
@@ -114,7 +112,7 @@ public class FireStomp extends OverriddenFireAbility implements ComboAbility, Ad
 			.map(e -> (LivingEntity) e)
 			.forEach(e -> {
 				DamageHandler.damageEntity(e, getDayFactor(damage), this);
-				Vector knockback = GeneralMethods.getDirection(center, e.getLocation()).normalize().multiply(this.knockback);
+				Vector knockback = GeneralMethods.getDirection(center, e.getLocation()).normalize().multiply(getDayFactor(this.knockback));
 				if (!GeneralMethods.isSolid(e.getLocation().add(0, -.1, 0).getBlock())) {
 					knockback.multiply(.6);
 				}
@@ -164,17 +162,16 @@ public class FireStomp extends OverriddenFireAbility implements ComboAbility, Ad
 
 	@Override
 	public void load() {
-		perm = new Permission("bending.ability." + getName());
-		perm.setDefault(PermissionDefault.TRUE);
+		super.load();
 		FireUtil.registerLanguage(this, "This combo allows a firebender to perform a downward kick, striking fire around them when hitting the ground. " +
 			"To use, perform the combo. You then have 1.5 seconds to hit the ground at high enough velocity. When you do so, fire will strike on the impact area, knocking " +
 			"back and damaging those around you, as well as reducing your fall damage.", FireUtil.generateComboInstructions(this));
-		ConfigValueHandler.get().registerDefaultValues(this);
+		ConfigValueHandler.get().setFields(new FireStomp());
 	}
 
 	@Override
 	public void stop() {
-		Bukkit.getServer().getPluginManager().removePermission(perm);
+		ConfigValueHandler.get().unregister(this);
 	}
 
 	@Override
@@ -203,8 +200,8 @@ public class FireStomp extends OverriddenFireAbility implements ComboAbility, Ad
 	public ArrayList<ComboManager.AbilityInformation> getCombination() {
 		return new ArrayList<>(Arrays.asList(
 			new ComboManager.AbilityInformation("Blaze", ClickType.SHIFT_DOWN),
-			new ComboManager.AbilityInformation("FireBurst", ClickType.LEFT_CLICK),
-			new ComboManager.AbilityInformation("FireBurst", ClickType.LEFT_CLICK)
+			new ComboManager.AbilityInformation("Blaze", ClickType.LEFT_CLICK),
+			new ComboManager.AbilityInformation("Blaze", ClickType.SHIFT_UP)
 		));
 	}
 }

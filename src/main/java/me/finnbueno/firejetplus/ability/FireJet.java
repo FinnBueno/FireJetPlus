@@ -1,14 +1,17 @@
 package me.finnbueno.firejetplus.ability;
 
+import com.projectkorra.projectkorra.Element;
 import com.projectkorra.projectkorra.GeneralMethods;
 import com.projectkorra.projectkorra.ability.AddonAbility;
-import me.finnbueno.firejetplus.combo.FireRush;
 import me.finnbueno.firejetplus.config.ConfigValue;
 import me.finnbueno.firejetplus.config.ConfigValueHandler;
 import me.finnbueno.firejetplus.listener.FireJetListener;
 import me.finnbueno.firejetplus.util.FireUtil;
 import me.finnbueno.firejetplus.util.OverriddenFireAbility;
-import org.bukkit.*;
+import org.bukkit.Bukkit;
+import org.bukkit.ChatColor;
+import org.bukkit.Location;
+import org.bukkit.Particle;
 import org.bukkit.boss.BarColor;
 import org.bukkit.boss.BarStyle;
 import org.bukkit.boss.BossBar;
@@ -20,6 +23,7 @@ import org.bukkit.util.Vector;
 
 import java.util.HashSet;
 import java.util.Set;
+import java.util.function.Function;
 
 /**
  * @author Finn Bon
@@ -27,7 +31,7 @@ import java.util.Set;
  */
 public class FireJet extends OverriddenFireAbility implements AddonAbility {
 
-	private enum State {
+	public enum State {
 		CHARGING, FLYING
 	}
 
@@ -65,6 +69,8 @@ public class FireJet extends OverriddenFireAbility implements AddonAbility {
 	private long chargeCancelCooldown = 750;
 	@ConfigValue()
 	private boolean cancelJetOnDamage = true;
+	@ConfigValue()
+	private boolean enabled = true;
 
 	private State state;
 	private BossBar chargeBar;
@@ -75,11 +81,17 @@ public class FireJet extends OverriddenFireAbility implements AddonAbility {
 	private long flyStart;
 	private Set<LivingEntity> lit;
 	private double chargeFactor;
+	private Runnable onFlyStart;
+
+	/**
+	 * This constructor is used to generate config values, do not use
+	 */
+	private FireJet() {
+		super(null);
+	}
 
 	public FireJet(Player player) {
 		super(player);
-
-		ConfigValueHandler.get().setFields(this);
 
 		FireJet existingFireJet = getAbility(player, getClass());
 		if (existingFireJet != null) {
@@ -168,6 +180,9 @@ public class FireJet extends OverriddenFireAbility implements AddonAbility {
 		this.player.setAllowFlight(true);
 		this.lit = new HashSet<>();
 		this.state = State.FLYING;
+		if (this.onFlyStart != null) {
+			this.onFlyStart.run();
+		}
 	}
 
 	private void handleFlying() {
@@ -185,7 +200,7 @@ public class FireJet extends OverriddenFireAbility implements AddonAbility {
 			playFirebendingSound(this.player.getLocation());
 		}
 
-		this.playFirebendingParticles(this.player.getLocation(), 10, 0.3D, 0.3D, 0.3D);
+		playParticles();
 
 		if (!lockDirectionOnSlotSwap || bPlayer.getBoundAbilityName().equals(getName())) {
 			setDirection();
@@ -201,6 +216,21 @@ public class FireJet extends OverriddenFireAbility implements AddonAbility {
 					lit.add(e);
 					e.setFireTicks(fireTicks);
 				});
+		}
+	}
+
+	private void playParticles() {
+		Particle particle = bPlayer.hasSubElement(Element.SubElement.BLUE_FIRE) ? Particle.SOUL_FIRE_FLAME : Particle.FLAME;
+		int amount = 15;
+		double offset = .8;
+		for (int i = 0; i < amount; i++) {
+			Location loc = player.getLocation()
+				.add((Math.random() - .5) * offset, (Math.random() - .5) * offset + .5, (Math.random() - .5) * offset);
+			double yaw = Math.toRadians(player.getLocation().getYaw());
+			Vector particleDirection = new Vector(-Math.sin(yaw), .5, Math.cos(yaw)).multiply(-.3);
+			particleDirection = FireUtil.randomizeVector(particleDirection, 50);
+			this.player.getWorld()
+				.spawnParticle(particle, loc, 0, particleDirection.getX(), particleDirection.getY(), particleDirection.getZ());
 		}
 	}
 
@@ -253,17 +283,20 @@ public class FireJet extends OverriddenFireAbility implements AddonAbility {
 		}
 	}
 
-	public FireRush attemptFireRush() {
-		player.sendMessage("Test 5");
+	public void onFlyStart(Runnable run) {
 		if (state == State.FLYING) {
-			player.sendMessage("Test 6");
-			new FireRush(player, this);
+			run.run();
+		} else {
+			this.onFlyStart = run;
 		}
-		return null;
 	}
 
 	public void setSpeed(double speed) {
 		this.speed = speed;
+	}
+
+	public void setDuration(long duration) {
+		this.duration = duration;
 	}
 
 	public void setMaxSteeringAngle(double maxSteeringAngle) {
@@ -272,6 +305,14 @@ public class FireJet extends OverriddenFireAbility implements AddonAbility {
 
 	public double getChargeFactor() {
 		return this.chargeFactor;
+	}
+
+	public Vector getDirection() {
+		return this.direction.clone();
+	}
+
+	public State getState() {
+		return this.state;
 	}
 
 	private double clamp(double v) {
@@ -305,6 +346,7 @@ public class FireJet extends OverriddenFireAbility implements AddonAbility {
 
 	@Override
 	public void load() {
+		super.load();
 		listener = new FireJetListener(this);
 		FireUtil.registerLanguage(this, "This ability provides a firebender with great mobility and repositioning options. This move has 2 use with their own cooldowns.",
 			"\nJet: This function allows a firebender to fly using jets of fire. To use, hold shift. A bar will appear at the top of your screen to show charging progress. " +
@@ -313,12 +355,13 @@ public class FireJet extends OverriddenFireAbility implements AddonAbility {
 			"Dash: This function allows a firebender to make a single large jump in a direction. To do this, simply left click. Shortly after activating this and while still " +
 			"in the air, you may hold shift. When you do this, you start surfing across the ground for a longer period of time. Changing slots is also possible during this, " +
 			"and will also lock your direction. However, you must hold shift, or this move will stop.");
-		ConfigValueHandler.get().registerDefaultValues(this);
+		ConfigValueHandler.get().setFields(new FireJet());
 	}
 
 	@Override
 	public void stop() {
 		HandlerList.unregisterAll(listener);
+		ConfigValueHandler.get().unregister(this);
 	}
 
 	@Override

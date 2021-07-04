@@ -7,18 +7,16 @@ import me.finnbueno.firejetplus.config.ConfigValue;
 import me.finnbueno.firejetplus.config.ConfigValueHandler;
 import me.finnbueno.firejetplus.util.FireUtil;
 import me.finnbueno.firejetplus.util.OverriddenFireAbility;
-import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Particle;
 import org.bukkit.entity.Player;
 import org.bukkit.permissions.Permission;
-import org.bukkit.permissions.PermissionDefault;
 import org.bukkit.util.Vector;
 
 /**
  * @author Finn Bon
  */
-public class FireStride extends OverriddenFireAbility implements AddonAbility {
+public class FireDash extends OverriddenFireAbility implements AddonAbility {
 
 	private Permission perm;
 
@@ -28,24 +26,35 @@ public class FireStride extends OverriddenFireAbility implements AddonAbility {
 	private double speed = 1.2;
 	@ConfigValue()
 	private long cooldown = 1500;
+	@ConfigValue()
+	private boolean enabled = true;
 
 	private Vector direction;
 
-	public FireStride(Player player) {
-		super(player);
-		ConfigValueHandler.get().setFields(this);
+	/**
+	 * This constructor is used to generate config values, do not use
+	 */
+	private FireDash() {
+		super(null);
+		System.out.println("Config init called!");
+		System.out.println("Enabled: " + true);
+	}
 
-		FireStride fs = getAbility(player, getClass());
+	public FireDash(Player player) {
+		super(player);
+
+		FireDash fs = getAbility(player, getClass());
 		if (fs != null) {
 			fs.remove();
 			return;
 		}
 
-		double speed = this.speed;
+		double speed = getDayFactor(this.speed);
 		if (!isTouchingGround()) {
 			speed *= .85;
 		}
 		this.direction = player.getLocation().getDirection().multiply(speed);
+		this.flightHandler.createInstance(player, this.getName());
 		bPlayer.addCooldown(this);
 		playFirebendingSound(getLocation());
 		start();
@@ -78,6 +87,12 @@ public class FireStride extends OverriddenFireAbility implements AddonAbility {
 			return true;
 		}
 		return false;
+	}
+
+	@Override
+	public void remove() {
+		super.remove();
+		this.flightHandler.removeInstance(player, this.getName());
 	}
 
 	private boolean isTouchingGround() {
@@ -129,14 +144,13 @@ public class FireStride extends OverriddenFireAbility implements AddonAbility {
 
 	@Override
 	public void load() {
-		perm = new Permission("bending.ability." + getName());
-		perm.setDefault(PermissionDefault.TRUE);
-		ConfigValueHandler.get().registerDefaultValues(this, "FireJet");
+		super.load();
+		ConfigValueHandler.get().setFields(this, "FireJet");
 	}
 
 	@Override
 	public void stop() {
-		Bukkit.getServer().getPluginManager().removePermission(perm);
+		ConfigValueHandler.get().unregister(this);
 	}
 
 	@Override
