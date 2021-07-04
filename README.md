@@ -1,4 +1,4 @@
-FireJet+
+# FireJet+
 Be more mobile than ever as a firebender!
 
 ## Installation
