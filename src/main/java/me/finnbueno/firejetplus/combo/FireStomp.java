@@ -54,6 +54,7 @@ public class FireStomp extends OverriddenFireAbility implements ComboAbility, Ad
 
 	public FireStomp(Player player) {
 		super(player);
+		ConfigValueHandler.get().setFields(this);
 		this.yVelocity = player.getVelocity().getY();
 		this.fallDistance = player.getFallDistance();
 		start();
@@ -166,7 +167,7 @@ public class FireStomp extends OverriddenFireAbility implements ComboAbility, Ad
 		FireUtil.registerLanguage(this, "This combo allows a firebender to perform a downward kick, striking fire around them when hitting the ground. " +
 			"To use, perform the combo. You then have 1.5 seconds to hit the ground at high enough velocity. When you do so, fire will strike on the impact area, knocking " +
 			"back and damaging those around you, as well as reducing your fall damage.", FireUtil.generateComboInstructions(this));
-		ConfigValueHandler.get().setFields(new FireStomp());
+		ConfigValueHandler.get().registerDefaultValues(new FireStomp(), null);
 	}
 
 	@Override

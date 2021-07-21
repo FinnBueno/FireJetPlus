@@ -36,12 +36,16 @@ public class FireDash extends OverriddenFireAbility implements AddonAbility {
 	 */
 	private FireDash() {
 		super(null);
-		System.out.println("Config init called!");
-		System.out.println("Enabled: " + true);
 	}
 
 	public FireDash(Player player) {
 		super(player);
+
+		ConfigValueHandler.get().setFields(this);
+
+		if (!enabled) {
+			return;
+		}
 
 		FireDash fs = getAbility(player, getClass());
 		if (fs != null) {
@@ -145,7 +149,7 @@ public class FireDash extends OverriddenFireAbility implements AddonAbility {
 	@Override
 	public void load() {
 		super.load();
-		ConfigValueHandler.get().setFields(this, "FireJet");
+		ConfigValueHandler.get().registerDefaultValues(new FireDash(), "FireJet");
 	}
 
 	@Override

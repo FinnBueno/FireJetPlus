@@ -39,6 +39,7 @@ public class FireCushion extends OverriddenFireAbility implements AddonAbility, 
 		if (!bPlayer.canBendIgnoreBinds(this)) {
 			return;
 		}
+		ConfigValueHandler.get().setFields(this);
 		if (event.getDamage() <= this.damageReduction) {
 			event.setCancelled(true);
 		} else {
@@ -96,7 +97,7 @@ public class FireCushion extends OverriddenFireAbility implements AddonAbility, 
 		super.load();
 		FireUtil.registerLanguage(this, "By firebending from their feet, firebenders can break their own fall. When you take fall damage, the damage is " +
 			"automatically reduced by a few hearts.", null);
-		ConfigValueHandler.get().setFields(new FireCushion());
+		ConfigValueHandler.get().registerDefaultValues(new FireCushion(), null);
 	}
 
 	@Override

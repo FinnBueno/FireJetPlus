@@ -27,21 +27,13 @@ public class ConfigValueHandler {
 	private Map<Class<? extends CoreAbility>, Set<ConfigField>> fieldsPerClass = new HashMap<>();
 
 	public void setFields(CoreAbility ability) {
-		setFields(ability, null);
-	}
-
-	public void setFields(CoreAbility ability, String prefix) {
 		Set<ConfigField> configFields = fieldsPerClass.get(ability.getClass());
-		if (configFields == null) {
-			configFields = registerDefaultValues(ability, prefix);
-			fieldsPerClass.put(ability.getClass(), configFields);
-		}
 		if (configFields != null) {
 			configFields.forEach(cf -> cf.load(ability));
 		}
 	}
 
-	private Set<ConfigField> registerDefaultValues(CoreAbility ability, String prefix) {
+	public void registerDefaultValues(CoreAbility ability, String prefix) {
 		try {
 			String path = buildPath(ability, prefix);
 
@@ -76,12 +68,9 @@ public class ConfigValueHandler {
 			ConfigManager.defaultConfig.save();
 
 			fieldsPerClass.put(ability.getClass(), fieldSet);
-
-			return fieldSet;
 		} catch (IllegalAccessException e) {
 			e.printStackTrace();
 		}
-		return null;
 	}
 
 	private String buildPath(CoreAbility ability, String prefix) {

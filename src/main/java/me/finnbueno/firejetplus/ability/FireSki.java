@@ -60,6 +60,13 @@ public class FireSki extends OverriddenFireAbility implements AddonAbility {
 
 	public FireSki(Player player) {
 		super(player);
+
+		ConfigValueHandler.get().setFields(this);
+
+		if (!enabled) {
+			return;
+		}
+
 		if (!bPlayer.canBendIgnoreBinds(this) || !bPlayer.canBendIgnoreCooldowns(CoreAbility.getAbility("FireJet"))) {
 			return;
 		}
@@ -204,6 +211,11 @@ public class FireSki extends OverriddenFireAbility implements AddonAbility {
 	}
 
 	@Override
+	public boolean isEnabled() {
+		return enabled;
+	}
+
+	@Override
 	public long getCooldown() {
 		return cooldown;
 	}
@@ -221,7 +233,7 @@ public class FireSki extends OverriddenFireAbility implements AddonAbility {
 	@Override
 	public void load() {
 		super.load();
-		ConfigValueHandler.get().setFields(new FireSki(), "FireJet");
+		ConfigValueHandler.get().registerDefaultValues(new FireSki(), "FireJet");
 	}
 
 	@Override

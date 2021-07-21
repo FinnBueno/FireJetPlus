@@ -23,7 +23,6 @@ import org.bukkit.util.Vector;
 
 import java.util.HashSet;
 import java.util.Set;
-import java.util.function.Function;
 
 /**
  * @author Finn Bon
@@ -35,7 +34,7 @@ public class FireJet extends OverriddenFireAbility implements AddonAbility {
 		CHARGING, FLYING
 	}
 
-	public static final String AUTHOR = "FinnBueno", VERSION = "1.0.0";
+	public static final String AUTHOR = "FinnBueno", VERSION = "1.1.0";
 
 	private Listener listener;
 
@@ -98,6 +97,7 @@ public class FireJet extends OverriddenFireAbility implements AddonAbility {
 			return;
 		}
 
+		ConfigValueHandler.get().setFields(this);
 		this.state = State.CHARGING;
 		this.chargeBar = Bukkit.getServer().createBossBar(CHARGE_BAR_TITLE, BarColor.WHITE, BarStyle.SEGMENTED_10);
 		this.chargeBar.addPlayer(player);
@@ -355,7 +355,7 @@ public class FireJet extends OverriddenFireAbility implements AddonAbility {
 			"Dash: This function allows a firebender to make a single large jump in a direction. To do this, simply left click. Shortly after activating this and while still " +
 			"in the air, you may hold shift. When you do this, you start surfing across the ground for a longer period of time. Changing slots is also possible during this, " +
 			"and will also lock your direction. However, you must hold shift, or this move will stop.");
-		ConfigValueHandler.get().setFields(new FireJet());
+		ConfigValueHandler.get().registerDefaultValues(new FireJet(), null);
 	}
 
 	@Override

@@ -63,22 +63,25 @@ public class FireUtil {
 		List<ComboManager.AbilityInformation> sequence = combo.getCombination();
 		LinkedList<String> steps = new LinkedList<>();
 		Iterator<ComboManager.AbilityInformation> it = sequence.iterator();
-		ClickType previous = null;
+		ClickType previousAction = null;
+		String previousMove = null;
 		while (it.hasNext()) {
 			ComboManager.AbilityInformation step = it.next();
-			if (step.getClickType() == ClickType.SHIFT_UP && previous == ClickType.SHIFT_DOWN) {
+			boolean isTap = step.getClickType() == ClickType.SHIFT_UP && previousAction == ClickType.SHIFT_DOWN && step.getAbilityName().equals(previousMove);
+			if (isTap) {
 				steps.removeLast();
 			}
 			steps.add(
 				String.format(
 					"%s (%s)",
 					step.getAbilityName(),
-					step.getClickType() == ClickType.SHIFT_UP && previous == ClickType.SHIFT_DOWN ?
+					isTap ?
 						"Tap Shift" :
 						formatClickType(step.getClickType())
 				)
 			);
-			previous = step.getClickType();
+			previousAction = step.getClickType();
+			previousMove = step.getAbilityName();
 		}
 		return String.join(" > ", steps);
 	}

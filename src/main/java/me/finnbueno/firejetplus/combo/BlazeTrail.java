@@ -124,7 +124,7 @@ public class BlazeTrail extends OverriddenFireAbility implements ComboAbility {
 		super.load();
 		FireUtil.registerLanguage(this, "With this combo, a firebender can use their FireSki to set the ground on fire. To use this combo, tap shift on " +
 			"FireBlast twice. Then, start skiing.", FireUtil.generateComboInstructions(this));
-		ConfigValueHandler.get().setFields(new BlazeTrail());
+		ConfigValueHandler.get().registerDefaultValues(new BlazeTrail(), null);
 	}
 
 	@Override
